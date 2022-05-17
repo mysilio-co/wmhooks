@@ -1,19 +1,43 @@
-import {useState, useMemo, useEffect, createContext, useContext} from 'react';
+import React, {
+  useState,
+  useMemo,
+  useEffect,
+  createContext,
+  useContext,
+} from 'react';
 
-export const WebMonetizationContext = createContext();
+type AssetCode = string;
 
-export const WebMonetizationProvider = ({ children }) => {
+type WMContextProps = {
+  isMonetizing: boolean;
+  total: number;
+  currency: AssetCode;
+};
+
+type WMProviderProps = {
+  children: any;
+};
+
+type WMPolyfillDocument = Document & {
+  monetization: any;
+};
+
+export const WebMonetizationContext = createContext({} as WMContextProps);
+
+export const WebMonetizationProvider = ({ children }: WMProviderProps) => {
   const [isMonetizing, setIsMonetizing] = useState(false);
   const [unscaledTotal, setUnscaledTotal] = useState(0);
   const [assetScale, setAssetScale] = useState(0);
-  const [assetCode, setAssetCode] = useState("");
+  const [assetCode, setAssetCode] = useState('');
   const scaledTotal = useMemo(() => {
-    return (unscaledTotal * Math.pow(10, -assetScale)).toFixed(assetScale);
+    return parseFloat(
+      (unscaledTotal * Math.pow(10, -assetScale)).toFixed(assetScale)
+    );
   }, [unscaledTotal, assetScale]);
 
   const handleStart = () => setIsMonetizing(true);
 
-  const handleProgress = (ev) => {
+  const handleProgress = (ev: any) => {
     // initialize currency and scale on first progress event
     setIsMonetizing(true);
     if (unscaledTotal === 0) {
@@ -21,25 +45,29 @@ export const WebMonetizationProvider = ({ children }) => {
       setAssetCode(ev.detail.assetCode);
     }
 
-    setUnscaledTotal((currentTotal) => currentTotal + Number(ev.detail.amount));
+    setUnscaledTotal(currentTotal => currentTotal + Number(ev.detail.amount));
   };
 
   useEffect(() => {
-    if (document.monetization) {
-      document.monetization.addEventListener("monetizationstart", handleStart);
-      document.monetization.addEventListener(
-        "monetizationprogress",
+    const wmdocument = document as WMPolyfillDocument;
+    if (wmdocument.monetization) {
+      wmdocument.monetization.addEventListener(
+        'monetizationstart',
+        handleStart
+      );
+      wmdocument.monetization.addEventListener(
+        'monetizationprogress',
         handleProgress
       );
     }
     return () => {
-      if (document.monetization) {
-        document.monetization.removeEventListener(
-          "monetizationstart",
+      if (wmdocument.monetization) {
+        wmdocument.monetization.removeEventListener(
+          'monetizationstart',
           handleStart
         );
-        document.monetization.removeEventListener(
-          "monetizationprogress",
+        wmdocument.monetization.removeEventListener(
+          'monetizationprogress',
           handleProgress
         );
       }
